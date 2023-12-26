@@ -3,6 +3,8 @@ using AuctionService.Data;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,15 +50,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+var retryPolicy = Policy
+    .Handle<NpgsqlException>()
+    .WaitAndRetry(5, retryAttempt => TimeSpan.FromSeconds(10));
+
+retryPolicy.ExecuteAndCapture(() => DbInitializer.InitDb(app));
+
 // app.UseHttpsRedirection();
-try
-{
-    DbInitializer.InitDb(app);
-    Console.WriteLine("Database initialization completed successfully.");
-}
-catch(Exception e)
-{
-    Console.WriteLine($"Exception during database initialization: {e}");
-}
 
 app.Run();
