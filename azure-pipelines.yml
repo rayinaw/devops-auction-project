@@ -1,0 +1,108 @@
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'e9f24110-6c5e-4bd0-9ba6-1def75060555'
+  containerRegistry: 'arcade.azurecr.io'
+  tag: '$(Build.BuildId)'
+  imagePullSecret: 'arcadeebd9-auth'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+  # Name of the new namespace being created to deploy the PR changes.
+  k8sNamespaceForPR: 'review-app-$(System.PullRequest.PullRequestId)'
+
+# Build image
+
+stages:
+- stage: Build
+  displayName: Build stage
+  pool:
+    vmImage: ubuntu-latest
+  jobs:
+  - job: Build
+    steps:
+    - task: Docker@2
+      displayName: 'Build and push front end web app image'
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: 'web-app'
+        Dockerfile: 'frontend/web-app/Dockerfile'
+        tags: |
+          $(tag)
+    - task: Docker@2
+      displayName: 'Build and push auction service image'
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: 'auction-service'
+        Dockerfile: 'src/AuctionService/Dockerfile'
+        tags: |
+          $(tag)
+    - task: Docker@2
+      displayName: 'Build and push search service image'
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: 'search-service'
+        Dockerfile: 'src/SearchService/Dockerfile'
+        tags: |
+          $(tag)
+    - upload: manifests
+      artifact: manifests
+# apply all k8s yml file
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  jobs:
+  - deployment: Deploy
+    condition: and(succeeded(), not(startsWith(variables['Build.SourceBranch'], 'refs/pull/')))
+    displayName: Deploy
+    pool:
+      vmImage: $(vmImageName)
+    environment: 'demoproject.demo-k8s'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          # Apply dev-secrets.yml
+          - task: Kubernetes@1
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceEndpoint: 'demo-cluster-demo-k8s'
+              command: 'apply'
+              useConfigurationFile: true
+              configuration: 'infra/secret'
+              secretType: 'dockerRegistry'
+              containerRegistryType: 'Azure Container Registry'
+              azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
+              azureContainerRegistry: 'arcade.azurecr.io'
+              forceUpdate: false
+          - task: Kubernetes@1
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceEndpoint: 'demo-cluster-demo-k8s'
+              command: 'apply'
+              useConfigurationFile: true
+              configuration: 'infra/K8S'
+              secretType: 'dockerRegistry'
+              containerRegistryType: 'Azure Container Registry'
+              azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
+              azureContainerRegistry: 'arcade.azurecr.io'
+              forceUpdate: false
+          - task: Kubernetes@1
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceEndpoint: 'demo-cluster-demo-k8s'
+              command: 'apply'
+              useConfigurationFile: true
+              configuration: 'infra/prod-k8s'
+              secretType: 'dockerRegistry'
+              containerRegistryType: 'Azure Container Registry'
