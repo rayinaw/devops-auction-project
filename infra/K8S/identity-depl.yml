@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-svc
+spec:
+  selector:
+    matchLabels:
+      app: identity-svc
+  template:
+    metadata:
+      labels:
+        app: identity-svc
+    spec:
+      containers:
+      - name: identity-svc
+        image: arcade.azurecr.io/identity-svc
+        env:
+          - name: ASPNETCORE_URLS
+            value: "http://+:80"
+          - name: ConnectionStrings__DefaultConnection
+            valueFrom:
+              secretKeyRef:
+                name: identity-secret
+                key: connString
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-clusterip
+spec:
+  selector:
+    app: identity
+  ports:
+  - port: 80
+    targetPort: 80

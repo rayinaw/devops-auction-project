@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-svc
+spec:
+  selector:
+    matchLabels:
+      app: auction-svc
+  template:
+    metadata:
+      labels:
+        app: auction-svc
+    spec:
+      containers:
+      - name: auction-svc
+        image: arcade.azurecr.io/auction-svc
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+        - name: ASPNETCORE_URLS
+          value: "http://+:80"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: auction-secret
+              key: connString
+        - name: ConnectionStrings__AzureServiceBus
+          valueFrom:
+            secretKeyRef:
+              name: auction-secret
+              key: connAzureServiceBus
+        - name: IdentityServiceUrl
+          value: "https://identity.rayinaw.one"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auction-clusterip
+spec:
+  type: ClusterIP
+  selector:
+    app: auction-svc
+  ports:
+  - port: 80
+    targetPort: 80
+    name: web
