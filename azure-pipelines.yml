@@ -1,0 +1,101 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+variables:
+  dockerRegistryServiceConnection: 'e9f24110-6c5e-4bd0-9ba6-1def75060555'
+  containerRegistry: 'arcade.azurecr.io'
+  tag: '$(Build.BuildId)'
+  imagePullSecret: 'arcadeebd9-auth'
+  vmImageName: 'ubuntu-latest'
+  k8sNamespaceForPR: 'review-app-$(System.PullRequest.PullRequestId)'
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+# - stage: Build
+#   displayName: Build stage
+#   pool:
+#     vmImage: ubuntu-latest
+#   jobs:
+#   - job: Build
+#     steps:
+#     - task: Docker@2
+#       displayName: 'Build and push front end web app image'
+#       inputs:
+#         command: 'buildAndPush'
+#         containerRegistry: $(dockerRegistryServiceConnection)
+#         repository: 'web-app'
+#         buildContext: .
+#         Dockerfile: 'frontend/web-app/Dockerfile'
+#         tags: |
+#           $(tag)
+#     - task: Docker@2
+#       displayName: 'Build and push auction service image'
+#       inputs:
+#         command: 'buildAndPush'
+#         containerRegistry: $(dockerRegistryServiceConnection)
+#         repository: 'auction-svc'
+#         buildContext: .
+#         Dockerfile: 'src/AuctionService/Dockerfile'
+#         tags: |
+#           $(tag)
+#     - task: Docker@2
+#       displayName: 'Build and push search service image'
+#       inputs:
+#         command: 'buildAndPush'
+#         containerRegistry: $(dockerRegistryServiceConnection)
+#         repository: 'search-svc'
+#         buildContext: .
+#         Dockerfile: 'src/SearchService/Dockerfile'
+#         tags: |
+#           $(tag)
+- stage: Deploy
+  displayName: Deploy stage
+  # dependsOn: Build
+  pool:
+    vmImage: ubuntu-latest
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    strategy:
+        runOnce:
+          deploy:
+            steps:
+            - script: |
+                pwd && ls
+            - task: Kubernetes@1
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceEndpoint: 'demo-cluster-default'
+                command: 'apply'
+                arguments: '-f $(System.ArtifactsDirectory)/manifests/secret/'
+                secretType: 'dockerRegistry'
+                containerRegistryType: 'Azure Container Registry'
+                azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
+                azureContainerRegistry: 'arcade.azurecr.io'
+            - task: Kubernetes@1
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceEndpoint: 'demo-cluster-default'
+                command: 'apply'
+                arguments: '-f $(System.ArtifactsDirectory)/manifests/K8S/'
+                secretType: 'dockerRegistry'
+                containerRegistryType: 'Azure Container Registry'
+                azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
+                azureContainerRegistry: 'arcade.azurecr.io'
+            - task: Kubernetes@1
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceEndpoint: 'demo-cluster-default'
+                command: 'apply'
+                arguments: '-f $(System.ArtifactsDirectory)/manifests/prod-k8s/'
+                secretType: 'dockerRegistry'
+                containerRegistryType: 'Azure Container Registry'
+                azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
+                azureContainerRegistry: 'arcade.azurecr.io'
