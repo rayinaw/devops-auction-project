@@ -12,19 +12,22 @@ variables:
   tag: '$(Build.BuildId)'
   imagePullSecret: 'arcadeebd9-auth'
   vmImageName: 'ubuntu-latest'
-  k8sNamespaceForPR: 'review-app-$(System.PullRequest.PullRequestId)'
 
 pool:
   vmImage: ubuntu-latest
 
 stages:
-# - stage: Build
-#   displayName: Build stage
-#   pool:
-#     vmImage: ubuntu-latest
-#   jobs:
-#   - job: Build
-#     steps:
+- stage: Build
+  displayName: Build stage
+  pool:
+    vmImage: ubuntu-latest
+  jobs:
+  - job: Build
+    steps:
+      - task: PublishPipelineArtifact@1
+        inputs:
+          artifactName: 'manifests'
+          path: 'manifests'
 #     - task: Docker@2
 #       displayName: 'Build and push front end web app image'
 #       inputs:
@@ -68,8 +71,16 @@ stages:
         runOnce:
           deploy:
             steps:
-            - script: |
-                pwd && ls
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                artifactName: 'manifests'
+                downloadPath: '$(System.ArtifactsDirectory)/manifests'
+            # - task: KubernetesManifest@0
+            #   displayName: Create imagePullSecret
+            #   inputs:
+            #     action: createSecret
+            #     secretName: $(imagePullSecret)
+            #     dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
             - task: Kubernetes@1
               inputs:
                 connectionType: 'Kubernetes Service Connection'
