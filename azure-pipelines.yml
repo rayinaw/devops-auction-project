@@ -58,15 +58,12 @@ stages:
         Dockerfile: 'src/SearchService/Dockerfile'
         tags: |
           $(tag)
-    - upload: manifests
-      artifact: manifests
 # apply all k8s yml file
 - stage: Deploy
   displayName: Deploy stage
   dependsOn: Build
   jobs:
   - deployment: Deploy
-    condition: and(succeeded(), not(startsWith(variables['Build.SourceBranch'], 'refs/pull/')))
     displayName: Deploy
     pool:
       vmImage: $(vmImageName)
@@ -76,6 +73,21 @@ stages:
         deploy:
           steps:
           # Apply dev-secrets.yml
+          - task: KubernetesManifest@0
+            displayName: Deploy to Kubernetes cluster
+            inputs:
+              action: deploy
+              manifests: |
+                $(System.ArtifactsDirectory)/manifests/secret/dev-secrets.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/local-pvc.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/postgres-depl.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/mongo-depl.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/auction-depl.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/gateway-depl.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/search-depl.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/identity-depl.yml
+                $(System.ArtifactsDirectory)/manifests/K8S/webapp-depl.yml
+                $(System.ArtifactsDirectory)/manifests/prod-k8s/ingress-svc.yml
           - task: Kubernetes@1
             inputs:
               connectionType: 'Kubernetes Service Connection'
