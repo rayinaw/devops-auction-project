@@ -63,6 +63,7 @@ stages:
   jobs:
   - deployment: Deploy
     displayName: Deploy
+    environment: 'demoproject.demo-k8s'
     strategy:
         runOnce:
           deploy:
