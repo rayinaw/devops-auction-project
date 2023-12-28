@@ -81,16 +81,16 @@ stages:
             #     action: createSecret
             #     secretName: $(imagePullSecret)
             #     dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
-            - task: Kubernetes@1
-              inputs:
-                connectionType: 'Kubernetes Service Connection'
-                kubernetesServiceEndpoint: 'demo-cluster-default'
-                command: 'apply'
-                arguments: '-f $(System.ArtifactsDirectory)/manifests/secret/ --validate=false'
-                secretType: 'dockerRegistry'
-                containerRegistryType: 'Azure Container Registry'
-                azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
-                azureContainerRegistry: 'arcade.azurecr.io'
+            # - task: Kubernetes@1
+            #   inputs:
+            #     connectionType: 'Kubernetes Service Connection'
+            #     kubernetesServiceEndpoint: 'demo-cluster-default'
+            #     command: 'apply'
+            #     arguments: '-f $(System.ArtifactsDirectory)/manifests/secret/ --validate=false'
+            #     secretType: 'dockerRegistry'
+            #     containerRegistryType: 'Azure Container Registry'
+            #     azureSubscriptionEndpointForSecrets: 'Azure for Students(e34551b1-e800-461b-85df-03af83f61d5d)'
+            #     azureContainerRegistry: 'arcade.azurecr.io'
             - task: Kubernetes@1
               inputs:
                 connectionType: 'Kubernetes Service Connection'
