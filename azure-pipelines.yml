@@ -34,6 +34,7 @@ stages:
         command: 'buildAndPush'
         containerRegistry: $(dockerRegistryServiceConnection)
         repository: 'web-app'
+        buildContext: .
         Dockerfile: 'frontend/web-app/Dockerfile'
         tags: |
           $(tag)
@@ -42,7 +43,8 @@ stages:
       inputs:
         command: 'buildAndPush'
         containerRegistry: $(dockerRegistryServiceConnection)
-        repository: 'auction-service'
+        repository: 'auction-svc'
+        buildContext: .
         Dockerfile: 'src/AuctionService/Dockerfile'
         tags: |
           $(tag)
@@ -51,7 +53,8 @@ stages:
       inputs:
         command: 'buildAndPush'
         containerRegistry: $(dockerRegistryServiceConnection)
-        repository: 'search-service'
+        repository: 'search-svc'
+        buildContext: .
         Dockerfile: 'src/SearchService/Dockerfile'
         tags: |
           $(tag)
