@@ -35,8 +35,9 @@ kind: Service
 metadata:
   name: identity-clusterip
 spec:
+  type: ClusterIP
   selector:
-    app: identity
+    app: identity-svc
   ports:
   - port: 80
     targetPort: 80
