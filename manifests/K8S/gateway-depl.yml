@@ -13,10 +13,14 @@ spec:
     spec:
       containers:
       - name: gateway-svc
-        image: arcade.azurecr.io/gateway-svc
+        image: arcade.azurecr.io/gateway-svc:{{DOCKER_IMAGE_VERSION}}
         env:
+          - name: ASPNETCORE_URLS
+            value: "http://+:80"
           - name: ClientApp
-            value: https://app.auction.com
+            value: https://app.rayinaw.one
+          - name: IdentityServiceUrl
+            value: https://identity.rayinaw.one
 ---
 apiVersion: v1
 kind: Service
