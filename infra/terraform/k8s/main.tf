@@ -16,7 +16,7 @@ data "azurerm_role_definition" "role_definition" {
 }
 
 resource "azurerm_role_assignment" "rolespn" {
-    scope = "/subscriptions/d8b5467b-9f93-49a7-b03e-d5c3edad86ac"
+    scope = "/subscriptions/e34551b1-e800-461b-85df-03af83f61d5d"
     role_definition_id = data.azurerm_role_definition.role_definition.id
     principal_id = module.ServicePrincipal.service_principal_object_id
 
