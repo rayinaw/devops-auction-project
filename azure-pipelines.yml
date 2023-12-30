@@ -1,6 +1,4 @@
 # Deploy to Azure Kubernetes Service
-# Build and push image to Azure Container Registry; Deploy to Azure Kubernetes Service
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
 trigger:
 - main
@@ -11,9 +9,9 @@ resources:
 variables:
 
   # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: '8202a4e1-640e-47f1-bb87-c983418579fb'
+  dockerRegistryServiceConnection: 'ContainerRegistryServiceConnection'
   imageRepository: 'demoproject'
-  containerRegistry: 'arcade.azurecr.io'
+  containerRegistry: 'qtmccr.azurecr.io'
   tag: '$(Build.BuildId)'
   # tag: 'latest'
   imagePullSecret: 'arcade72978b55-auth'
@@ -93,7 +91,7 @@ stages:
     displayName: Deploy
     pool:
       vmImage: $(vmImageName)
-    environment: 'demoproject-3630.default'
+    environment: 'kube-environment'
     strategy:
       runOnce:
         deploy:
@@ -110,6 +108,11 @@ stages:
               sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/search-depl.yml
               sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/identity-depl.yml
               sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/webapp-depl.yml
+              sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/auction-depl.yml
+              sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/gateway-depl.yml
+              sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/search-depl.yml
+              sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/identity-depl.yml
+              sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/webapp-depl.yml
           - task: KubernetesManifest@0
             displayName: Deploy to Kubernetes cluster
             inputs:
