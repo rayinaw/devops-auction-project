@@ -485,4 +485,4 @@ $RECYCLE.BIN/
 
 /docker/
 docker-compose.yml
-infra/secret/
+manifests/secret/
