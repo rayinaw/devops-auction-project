@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: identity-svc
-        image: arcade.azurecr.io/identity-svc:{{DOCKER_IMAGE_VERSION}}
+        image: CONTAINER_REGISTRY/identity-svc:{{DOCKER_IMAGE_VERSION}}
         env:
           - name: ASPNETCORE_URLS
             value: "http://+:80"

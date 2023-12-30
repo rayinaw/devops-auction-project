@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: gateway-svc
-        image: arcade.azurecr.io/gateway-svc:{{DOCKER_IMAGE_VERSION}}
+        image: CONTAINER_REGISTRY/gateway-svc:{{DOCKER_IMAGE_VERSION}}
         env:
           - name: ASPNETCORE_URLS
             value: "http://+:80"

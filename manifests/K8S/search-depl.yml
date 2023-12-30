@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: search-svc
-        image: arcade.azurecr.io/auction-svc:{{DOCKER_IMAGE_VERSION}}
+        image: CONTAINER_REGISTRY/auction-svc:{{DOCKER_IMAGE_VERSION}}
         env:
           - name: ASPNETCORE_URLS
             value: "http://+:80"
