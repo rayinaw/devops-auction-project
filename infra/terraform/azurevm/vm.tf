@@ -1,3 +1,7 @@
+data "azuread_client_config" "current" {
+  
+}
+
 resource "azurerm_resource_group" "rsg" {
   name     = "qtm-rsg"
   location = "East Asia"
@@ -67,4 +71,34 @@ resource "azurerm_linux_virtual_machine" "rancher_vm" {
     sku       = "22_04-lts"
     version   = "latest"
   }
+
+  connection {
+      host = self.public_ip_address
+      user = "rancher"
+      type = "ssh"
+      private_key = "${file("vm.pub")}"
+      timeout = "4m"
+      agent = false
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update",
+      "sudo apt-get install docker.io -y",
+      "sudo mkdir /var/lib/rancher",
+      "sudo docker run -d --name rancher -v /var/lib/rancher:/var/lib/rancher--restart=unless-stopped -p 8000:80 -p 8443:443 --privileged rancher/rancher"
+    ]
+
+  }
+}
+
+resource "azurerm_key_vault" "key_vault" {
+  name = "my-test-keyvault-001"
+  resource_group_name = azurerm_resource_group.rsg.name
+  location = azurerm_resource_group.rsg.location
+  sku_name = "standard"
+  tenant_id = data.azuread_client_config.current.tenant_id
+
+  enable_rbac_authorization = true
+  purge_protection_enabled = true
 }

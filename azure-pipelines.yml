@@ -7,30 +7,56 @@ resources:
 - repo: self
 
 variables:
-
-  # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: 'ContainerRegistryServiceConnection'
+  dockerRegistryServiceConnection: 'arcade'
   imageRepository: 'demoproject'
-  containerRegistry: 'qtmccr.azurecr.io'
+  containerRegistry: 'arcade.azurecr.io'
   tag: '$(Build.BuildId)'
-  # tag: 'latest'
-  imagePullSecret: 'arcade72978b55-auth'
-
-  # Agent VM image name
   vmImageName: 'ubuntu-latest'
-
+  servicesChangedWebApp: false
+  servicesChangedAuction: false
+  servicesChangedSearch: false
+  servicesChangedIdentity: false
+  servicesChangedGateway: false
+  dockerRepositoryWebApp: 'web-app'
+  dockerRepositoryAuction: 'auction-svc'
+  dockerRepositorySearch: 'search-svc'
+  dockerRepositoryIdentity: 'identity-svc'
+  dockerRepositoryGateway: 'gateway-svc'
+  latestTagWebApp: ''
+  latestTagAuction: ''
+  latestTagSearch: ''
+  latestTagIdentity: ''
+  latestTagGateway: ''
 
 stages:
 - stage: Build
   displayName: Build stage
   jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: $(vmImageName)
+  - job: CheckChanges
+    displayName: 'Check service changes'
+    condition: eq(variables['Build.SourceBranchName'], 'refs/heads/main')
     steps:
+    - script: |
+        servicesChangedWebApp=$(git diff --name-only HEAD^ HEAD | grep -q 'frontend/web-app/' && echo true || echo false)
+        servicesChangedAuction=$(git diff --name-only HEAD^ HEAD | grep -q 'src/AuctionService/' && echo true || echo false)
+        servicesChangedSearch=$(git diff --name-only HEAD^ HEAD | grep -q 'src/SearchService/' && echo true || echo false)
+        servicesChangedIdentity=$(git diff --name-only HEAD^ HEAD | grep -q 'src/IdentityService/' && echo true || echo false)
+        servicesChangedGateway=$(git diff --name-only HEAD^ HEAD | grep -q 'src/GatewayService/' && echo true || echo false)
+        echo "##vso[task.setvariable variable=servicesChangedWebApp]$servicesChangedWebApp"
+        echo "##vso[task.setvariable variable=servicesChangedAuction]$servicesChangedAuction"
+        echo "##vso[task.setvariable variable=servicesChangedSearch]$servicesChangedSearch"
+        echo "##vso[task.setvariable variable=servicesChangedIdentity]$servicesChangedIdentity"
+        echo "##vso[task.setvariable variable=servicesChangedGateway]$servicesChangedGateway"
+      displayName: 'Set Service Change Flags'
+  - job: BuildWebApp
+    displayName: 'Build and push front end web app image'
+    condition: and(eq(variables['Build.SourceBranchName'], 'refs/heads/main'), eq(variables['servicesChangedWebApp'], 'true'))
+    steps:
+    - script: |
+        latestTag=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryWebApp) --orderby time_desc --top 1 --output tsv)
+        echo "##vso[task.setvariable variable=serviceVersionWebApp]$latestTag"
+      displayName: 'Set WebApp Version'
     - task: Docker@2
-      displayName: 'Build and push front end web app image'
       inputs:
         command: 'buildAndPush'
         containerRegistry: $(dockerRegistryServiceConnection)
@@ -39,6 +65,14 @@ stages:
         Dockerfile: 'frontend/web-app/Dockerfile'
         tags: |
           $(tag)
+  - job: BuildAuction
+    displayName: 'Build and push auction service image'
+    condition: and(eq(variables['Build.SourceBranchName'], 'refs/heads/main'), eq(variables['servicesChangedAuction'], 'true'))
+    steps:
+    - script: |
+        latestTag=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryAuction) --orderby time_desc --top 1 --output tsv)
+        echo "##vso[task.setvariable variable=serviceVersionAuction]$latestTag"
+      displayName: 'Set Auction Version'
     - task: Docker@2
       displayName: 'Build and push auction service image'
       inputs:
@@ -49,6 +83,14 @@ stages:
         Dockerfile: 'src/AuctionService/Dockerfile'
         tags: |
           $(tag)
+  - job: BuildSearch
+    displayName: 'Build and push search service image'
+    condition: and(eq(variables['Build.SourceBranchName'], 'refs/heads/main'), eq(variables['servicesChangedSearch'], 'true'))
+    steps:
+    - script: |
+        latestTag=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositorySearch) --orderby time_desc --top 1 --output tsv)
+        echo "##vso[task.setvariable variable=serviceVersionSearch]$latestTag"
+      displayName: 'Set Search Version'
     - task: Docker@2
       displayName: 'Build and push search service image'
       inputs:
@@ -59,8 +101,16 @@ stages:
         Dockerfile: 'src/SearchService/Dockerfile'
         tags: |
           $(tag)
+  - job: BuildIdentity
+    displayName: 'Build and push identity service image'
+    condition: and(eq(variables['Build.SourceBranchName'], 'refs/heads/main'), eq(variables['servicesChangedIdentity'], 'true'))
+    steps:
+    - script: |
+        latestTag=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryIdentity) --orderby time_desc --top 1 --output tsv)
+        echo "##vso[task.setvariable variable=serviceVersionIdentity]$latestTag"
+      displayName: 'Set Identity Version'
     - task: Docker@2
-      displayName: 'Build and push identity service image'
+      displayName: 'Build and push Identity service image'
       inputs:
         command: 'buildAndPush'
         containerRegistry: $(dockerRegistryServiceConnection)
@@ -69,19 +119,30 @@ stages:
         Dockerfile: 'src/IdentityService/Dockerfile'
         tags: |
           $(tag)
+  - job: BuildGateway
+    displayName: 'Build and push gateway service image'
+    condition: and(eq(variables['Build.SourceBranchName'], 'refs/heads/main'), eq(variables['servicesChangedGateway'], 'true'))
+    steps:
+    - script: |
+        latestTag=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryGateway) --orderby time_desc --top 1 --output tsv)
+        echo "##vso[task.setvariable variable=serviceVersionGateway]$latestTag"
+      displayName: 'Set Gateway Version'
     - task: Docker@2
-      displayName: 'Build and push gateway-svc image'
+      displayName: 'Build and push Gateway service image'
       inputs:
         command: 'buildAndPush'
         containerRegistry: $(dockerRegistryServiceConnection)
-        repository: 'gateway-svc'
+        repository: 'auction-svc'
         buildContext: .
         Dockerfile: 'src/GatewayService/Dockerfile'
         tags: |
           $(tag)
+  - job: UploadManifests
+    displayName: 'Upload manifests'
+    dependsOn: [BuildWebApp, BuildAuction]
+    steps:
     - upload: manifests
       artifact: manifests
-
 - stage: Deploy
   displayName: Deploy stage
   dependsOn: Build
@@ -96,18 +157,26 @@ stages:
       runOnce:
         deploy:
           steps:
-          # - task: KubernetesManifest@0
-          #   displayName: Create imagePullSecret
-          #   inputs:
-          #     action: createSecret
-          #     secretName: $(imagePullSecret)
-          #     dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
           - script: |
-              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/auction-depl.yml
-              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/gateway-depl.yml
-              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/search-depl.yml
-              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/identity-depl.yml
-              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$(tag)|g" $(Pipeline.Workspace)/manifests/K8S/webapp-depl.yml
+
+              # Set variables for latest tags
+              latestTagAuction=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryAuction) --orderby time_desc --top 1 --output tsv)
+              latestTagGateway=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryGateway) --orderby time_desc --top 1 --output tsv)
+              latestTagSearch=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositorySearch) --orderby time_desc --top 1 --output tsv)
+              latestTagIdentity=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryIdentity) --orderby time_desc --top 1 --output tsv)
+              latestTagWebApp=$(az acr repository show-tags --name $(dockerRegistryServiceConnection) --repository $(dockerRepositoryWebApp) --orderby time_desc --top 1 --output tsv)
+
+              echo "Latest tag for Auction service before sed: $(latestTagAuction)"
+              echo "Latest tag for Gateway service before sed: $(latestTagGateway)"
+              echo "Latest tag for Gateway service before sed: $(latestTagSearch)"
+              echo "Latest tag for Gateway service before sed: $(latestTagIdentity)"
+              echo "Latest tag for Gateway service before sed: $(latestTagWebApp)"
+
+              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$latestTagAuction|g" $(Pipeline.Workspace)/manifests/K8S/auction-depl.yml
+              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$latestTagGateway|g" $(Pipeline.Workspace)/manifests/K8S/gateway-depl.yml
+              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$latestTagSearch|g" $(Pipeline.Workspace)/manifests/K8S/search-depl.yml
+              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$latestTagIdentity|g" $(Pipeline.Workspace)/manifests/K8S/identity-depl.yml
+              sed -i "s|{{DOCKER_IMAGE_VERSION}}|$latestTagWebApp|g" $(Pipeline.Workspace)/manifests/K8S/webapp-depl.yml
               sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/auction-depl.yml
               sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/gateway-depl.yml
               sed -i "s|CONTAINER_REGISTRY|$(containerRegistry)|g" $(Pipeline.Workspace)/manifests/K8S/search-depl.yml
@@ -128,8 +197,3 @@ stages:
                 $(Pipeline.Workspace)/manifests/K8S/webapp-depl.yml
                 $(Pipeline.Workspace)/manifests/service.yml
                 $(Pipeline.Workspace)/manifests/prod-k8s/ingress-svc.yml
-              # imagePullSecrets: |
-              #   $(imagePullSecret)
-              # containers: |
-              #   $(containerRegistry)/$(imageRepository):$(tag)
-
